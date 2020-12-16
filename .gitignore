@@ -1,3 +1,4 @@
 *.pyc
 __pycache__
 /gil.egg-info/
+/gil_objects

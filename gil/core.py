@@ -22,6 +22,7 @@ class Tree:
 class Commit:
     tree: Sha
     parent: Sha
+    commit_message: str
     committer: str = "Stefan :)"
 
 

@@ -5,7 +5,7 @@ from typing import Any
 import typer
 from wasabi import Printer
 
-from gil.utils import get_root_path, get_object_dir, get_HEAD
+from gil.utils import get_root_path, get_object_dir, get_ref, set_ref, NoRefException
 from gil.core import Blob, Tree, Commit, hash_data, Sha
 
 
@@ -41,14 +41,17 @@ def hash_object(path: Path):
 
 
 @app.command()
-def cat_file(sha: str):
+def cat_file(sha: str, do_print: bool = True):
     """Read the content of the file for the given sha."""
     path = get_object_dir() / sha
-    assert path.is_file
+    assert path.is_file()
 
     with path.open("rb") as f:
         obj = pickle.load(f)
-    print(obj)
+
+    if do_print:
+        print(obj)
+    return obj
 
 
 # TREE
@@ -60,15 +63,14 @@ def hash_tree(path: Path):
     # collect all the data
     items = []
     for p in path.iterdir():
-        if p.is_file():
-            sha = hash_object(p)
-            items.append((sha, str(p.name)))
+        if p.name == ".gil":
+            continue
+        elif p.is_file():
+            items.append((hash_object(p), str(p.name)))
         elif p.is_dir():
-            sha = hash_tree(p)
-            items.append((sha, str(p.name)))
+            items.append((hash_tree(p), str(p.name)))
         else:
-            msg.warn("WTF!")
-            raise Exception()
+            raise Exception("WTF!")
 
     # create and dump tree object
     items = sorted(items)
@@ -80,23 +82,34 @@ def hash_tree(path: Path):
 
 # COMMIT
 @app.command()
-def commit(msg: str):
+def commit(commit_message: str):
+    """gil add and gil commit"""
     tree_sha = hash_tree(Path("."))
-    parent_sha = get_HEAD()
-    commit = Commit(tree_sha, parent_sha)
-    c_sha = hash_data((str(commit.parent) + commit.tree).encode())
-    dump_obj(c_sha, commit, "commit")
+    try:
+        prev_commit_sha = get_ref("HEAD")
+        prev_commit = cat_file(prev_commit_sha, do_print=False)
+        if prev_commit.tree == tree_sha:
+            msg.warn("Nothing changed, nothing to commit.")
+            return
+    except NoRefException:
+        prev_commit_sha = ""
+
+    commit = Commit(tree_sha, prev_commit_sha, commit_message)
+    commit_sha = hash_data((str(commit.parent) + commit.tree).encode())
+    dump_obj(commit_sha, commit, "commit")
+
+    set_ref(commit_sha, "HEAD")
 
 
 # UTILS
-def dump_obj(sha: Sha, obj: Any, msg) -> None:
+def dump_obj(sha: Sha, obj: Any, message) -> None:
     dst = get_object_dir() / sha
     if dst.exists():
-        msg.info(f"Already hashed '{msg}' --> {sha}")
+        msg.info(f"Already hashed '{message}' --> {sha}")
     else:
         with dst.open("wb") as f:
             pickle.dump(obj, f)
-        msg.info(f"Hashed tree '{msg}' --> {sha}")
+        msg.info(f"Hashed '{message}' --> {sha}")
 
 
 if __name__ == "__main__":
