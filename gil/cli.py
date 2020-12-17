@@ -5,8 +5,9 @@ from typing import Any
 import typer
 from wasabi import Printer
 
-from gil.utils import get_root_path, get_object_dir, get_ref, set_ref, NoRefException
+from gil.utils import get_ref, set_ref, NoRefException
 from gil.core import Blob, Tree, Commit, hash_data, Sha
+from gil import paths
 
 
 app = typer.Typer()
@@ -16,14 +17,19 @@ msg = Printer(line_max=220)
 @app.command()
 def init():
     """Create a gil repo."""
-    gil_object_path = get_root_path() / "gil_objects"
-    if gil_object_path.exists():
-        msg.warn(f"gil repo at {gil_object_path} already exists")
+    path = Path.cwd() / ".gil"
+    if path.exists():
+        msg.warn(f"gil repo at {path} already exists")
         return
 
-    gil_object_path.mkdir(exist_ok=True)
-    (gil_object_path / "objects").mkdir(exist_ok=True)
-    msg.good(f"gil repo created in {gil_object_path}")
+    path.mkdir()
+    (path / "objects").mkdir()
+    (path / "refs").mkdir()
+    (path / "refs/tags").mkdir()
+    (path / "refs/heads").mkdir()
+    with (path / "HEAD").open("w") as f:
+        f.write("refs/heads/main")
+    msg.good(f"gil repo created in '{path}'")
 
 
 # BLOB
@@ -43,7 +49,7 @@ def hash_object(path: Path):
 @app.command()
 def cat_file(sha: str, do_print: bool = True):
     """Read the content of the file for the given sha."""
-    path = get_object_dir() / sha
+    path = paths.OBJECTS_DIR / sha
     assert path.is_file()
 
     with path.open("rb") as f:
@@ -74,7 +80,7 @@ def hash_tree(path: Path):
 
     # create and dump tree object
     items = sorted(items)
-    sha = hash_data("".join(sha for sha, _ in items).encode())
+    sha = hash_data("".join(sha for sha, _ in items))
     dump_obj(sha, Tree(items), path)
 
     return sha
@@ -86,7 +92,7 @@ def commit(commit_message: str):
     """gil add and gil commit"""
     tree_sha = hash_tree(Path("."))
     try:
-        prev_commit_sha = get_ref("HEAD")
+        prev_commit_sha = get_ref()
         prev_commit = cat_file(prev_commit_sha, do_print=False)
         if prev_commit.tree == tree_sha:
             msg.warn("Nothing changed, nothing to commit.")
@@ -98,18 +104,18 @@ def commit(commit_message: str):
     commit_sha = hash_data((str(commit.parent) + commit.tree).encode())
     dump_obj(commit_sha, commit, "commit")
 
-    set_ref(commit_sha, "HEAD")
+    set_ref(commit_sha)
 
 
 # UTILS
 def dump_obj(sha: Sha, obj: Any, message) -> None:
-    dst = get_object_dir() / sha
+    dst = paths.OBJECTS_DIR / sha
     if dst.exists():
-        msg.info(f"Already hashed '{message}' --> {sha}")
+        msg.warn(f"{sha} --> '{message}' already hashed")
     else:
         with dst.open("wb") as f:
             pickle.dump(obj, f)
-        msg.info(f"Hashed '{message}' --> {sha}")
+        msg.info(f"{sha} --> '{message}' hashed")
 
 
 if __name__ == "__main__":
