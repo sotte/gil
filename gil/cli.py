@@ -27,6 +27,7 @@ def init():
     (path / "refs").mkdir()
     (path / "refs/tags").mkdir()
     (path / "refs/heads").mkdir()
+    (path / "refs/remotes").mkdir()
     with (path / "HEAD").open("w") as f:
         f.write("refs/heads/main")
     msg.good(f"gil repo created in '{path}'")
