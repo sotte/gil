@@ -108,6 +108,17 @@ def commit(commit_message: str):
     set_ref(commit_sha)
 
 
+@app.command()
+def log():
+    """log of all commits"""
+    commit_sha = get_ref()
+    while commit_sha:
+        commit = cat_file(commit_sha, do_print=False)
+        commit_sha = commit.parent
+        print(" * ", commit_sha)
+        print("   ", commit)
+
+
 # UTILS
 def dump_obj(sha: Sha, obj: Any, message) -> None:
     dst = paths.OBJECTS_DIR / sha
