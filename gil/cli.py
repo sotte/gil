@@ -5,9 +5,9 @@ from typing import Any
 import typer
 from wasabi import Printer
 
-from gil.utils import get_ref, set_ref, NoRefException
-from gil.core import Blob, Tree, Commit, hash_data, Sha
 from gil import paths
+from gil.core import Blob, Commit, Sha, Tree, hash_data
+from gil.utils import NoRefException, get_ref, set_ref
 
 
 app = typer.Typer()
@@ -36,7 +36,7 @@ def init():
 # BLOB
 @app.command()
 def hash_object(path: Path):
-    """hash the object and add it to the repo."""
+    """Hash the object and add it to the repo."""
     assert path.is_file()
 
     with path.open("rb") as f:
@@ -49,7 +49,7 @@ def hash_object(path: Path):
 
 @app.command()
 def cat_file(sha: str, do_print: bool = True):
-    """Read the content of the file for the given sha."""
+    """Read the content of the object with the given sha."""
     path = paths.OBJECTS_DIR / sha
     assert path.is_file()
 
@@ -90,7 +90,7 @@ def hash_tree(path: Path):
 # COMMIT
 @app.command()
 def commit(commit_message: str):
-    """gil add and gil commit"""
+    """Think: git add and git commit"""
     tree_sha = hash_tree(Path("."))
     try:
         prev_commit_sha = get_ref()
