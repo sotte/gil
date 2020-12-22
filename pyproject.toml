@@ -8,6 +8,7 @@ authors = ["Stefan Otte <stefan.otte@gmail.com>"]
 python = "^3.8"
 typer = "^0.3.2"
 wasabi = "^0.8.0"
+graphviz = "^0.15"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -119,6 +119,44 @@ def log():
         commit_sha = commit.parent
 
 
+# GRAPH
+@app.command()
+def graph():
+    """Graphviz graph of the current repo."""
+    from graphviz import Digraph
+
+    dot = Digraph()
+    commit_sha = get_ref()
+    while commit_sha:
+        commit = cat_file(commit_sha, do_print=False)
+        dot.node(commit_sha[:8])
+
+        dot.node(commit.tree[:8], shape="triangle")
+        dot.edge(commit_sha[:8], commit.tree[:8])
+
+        tree = cat_file(commit.tree)
+        _graph_subtree(commit.tree, tree, dot)
+
+        parent_sha = commit.parent
+        if parent_sha:
+            dot.edge(parent_sha[:8], commit_sha[:8])
+
+        commit_sha = parent_sha
+
+    dot.render("/tmp/gil.pdf", view=True)
+
+
+def _graph_subtree(tree_sha: Sha, tree: Tree, dot):
+    for sha, path in tree.items:
+        obj = cat_file(sha)
+        if isinstance(obj, Tree):
+            dot.node(sha[:8], shape="triangle")
+            _graph_subtree(sha, tree=obj, dot=dot)
+        else:
+            dot.node(sha[:8], shape="box")
+        dot.edge(tree_sha[:8], sha[:8], path)
+
+
 # UTILS
 def dump_obj(sha: Sha, obj: Any, message) -> None:
     dst = paths.OBJECTS_DIR / sha
