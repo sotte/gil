@@ -114,9 +114,9 @@ def log():
     commit_sha = get_ref()
     while commit_sha:
         commit = cat_file(commit_sha, do_print=False)
+        print(" *", commit_sha)
+        print("  ", commit)
         commit_sha = commit.parent
-        print(" * ", commit_sha)
-        print("   ", commit)
 
 
 # UTILS
