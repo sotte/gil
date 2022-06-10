@@ -1,5 +1,5 @@
-from gil.core import Sha
 from gil import paths
+from gil.core import Sha
 
 
 class NoRefException(Exception):
